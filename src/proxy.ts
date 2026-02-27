@@ -23,6 +23,16 @@ export async function startProxy(token: string): Promise<void> {
     },
   );
 
+  let shuttingDown = false;
+
+  function shutdown(code: number): void {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    stdioTransport.close().catch(() => {});
+    httpTransport.close().catch(() => {});
+    process.exit(code);
+  }
+
   // Bridge messages bidirectionally
   stdioTransport.onmessage = (message) => {
     httpTransport.send(message).catch((err) => {
@@ -39,14 +49,12 @@ export async function startProxy(token: string): Promise<void> {
   // Handle close events
   stdioTransport.onclose = () => {
     log("Client disconnected, shutting down.");
-    httpTransport.close().catch(() => {});
-    process.exit(0);
+    shutdown(0);
   };
 
   httpTransport.onclose = () => {
     log("Remote server disconnected.");
-    stdioTransport.close().catch(() => {});
-    process.exit(1);
+    shutdown(1);
   };
 
   // Handle errors
@@ -64,18 +72,13 @@ export async function startProxy(token: string): Promise<void> {
 
   log("Proxy is running. Forwarding MCP messages...");
 
-  // Keep the process alive
   process.on("SIGINT", () => {
     log("Received SIGINT, shutting down...");
-    stdioTransport.close().catch(() => {});
-    httpTransport.close().catch(() => {});
-    process.exit(0);
+    shutdown(0);
   });
 
   process.on("SIGTERM", () => {
     log("Received SIGTERM, shutting down...");
-    stdioTransport.close().catch(() => {});
-    httpTransport.close().catch(() => {});
-    process.exit(0);
+    shutdown(0);
   });
 }
