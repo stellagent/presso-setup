@@ -8,9 +8,13 @@
   <img src="assets/logo-400x400.png" alt="Presso Logo" width="200" />
 </p>
 
+<p align="center">
+  <a href="https://presso.now">Website</a> · <a href="https://app.presso.now/signup">Get Started</a> · <a href="https://presso.now/docs">Docs</a>
+</p>
+
 ## Overview
 
-Presso is an MCP server that connects your e-commerce and marketing data sources — Shopify, Google Analytics 4, Google Ads, Meta Ads, and more — directly to AI assistants like Claude. Instead of switching between dashboards, ask questions in natural language and get instant answers about your store's performance, ad campaigns, and customer behavior.
+[Presso](https://presso.now) is an MCP server that connects your e-commerce and marketing data sources — Shopify, Google Analytics 4, Google Ads, Meta Ads, and more — directly to AI assistants like Claude. Instead of switching between dashboards, ask questions in natural language and get instant answers about your store's performance, ad campaigns, and customer behavior.
 
 The MCP endpoint is a remote HTTP server. Most AI clients (Claude Code, Claude Desktop, Cursor, VS Code) can connect directly. For clients that only support stdio, a lightweight npm proxy (`presso-mcp`) is also available.
 

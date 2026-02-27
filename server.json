@@ -1,17 +1,17 @@
 {
-  "name": "com.stellagent/presso",
-  "description": "AI-powered analytics platform connecting e-commerce and marketing data to AI assistants via MCP.",
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "now.presso/presso",
+  "title": "Presso",
+  "description": "Connect e-commerce and marketing data to AI assistants via MCP.",
+  "repository": {
+    "url": "https://github.com/stellagent/presso-setup",
+    "source": "github"
+  },
   "version": "1.0.0",
   "remotes": [
     {
-      "transportType": "streamable-http",
+      "type": "streamable-http",
       "url": "https://mcp.presso.now/mcp"
     }
-  ],
-  "packages": {
-    "npm": {
-      "name": "presso-mcp",
-      "description": "Local stdio proxy for Presso's remote MCP server"
-    }
-  }
+  ]
 }

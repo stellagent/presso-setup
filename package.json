@@ -1,6 +1,6 @@
 {
   "name": "presso-mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Local stdio proxy for Presso's remote MCP server — connect e-commerce and marketing data to AI assistants",
   "type": "module",
   "main": "dist/index.js",
@@ -37,6 +37,7 @@
   ],
   "author": "Stellagent Inc. <contact@stellagent.ai>",
   "license": "MIT",
+  "mcpName": "now.presso/presso",
   "homepage": "https://github.com/stellagent/presso-setup",
   "repository": {
     "type": "git",
