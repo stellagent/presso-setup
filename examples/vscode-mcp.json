@@ -1,0 +1,10 @@
+{
+  "mcp": {
+    "servers": {
+      "presso": {
+        "type": "http",
+        "url": "https://mcp.presso.now/mcp"
+      }
+    }
+  }
+}

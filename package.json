@@ -1,0 +1,57 @@
+{
+  "name": "presso-mcp",
+  "version": "0.1.0",
+  "description": "Local stdio proxy for Presso's remote MCP server — connect e-commerce and marketing data to AI assistants",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "presso-mcp": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "presso",
+    "ecommerce",
+    "analytics",
+    "shopify",
+    "google-analytics",
+    "google-ads",
+    "meta-ads",
+    "ai",
+    "claude",
+    "proxy",
+    "stdio"
+  ],
+  "author": "Stellagent Inc. <contact@stellagent.ai>",
+  "license": "MIT",
+  "homepage": "https://github.com/stellagent/presso-setup",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/stellagent/presso-setup.git"
+  },
+  "bugs": {
+    "url": "https://github.com/stellagent/presso-setup/issues"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.22.0",
+    "open": "^10.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.34",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}
