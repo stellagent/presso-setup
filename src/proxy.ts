@@ -1,5 +1,4 @@
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { createInterface } from "node:readline";
 import { log, error } from "./utils/logger.js";
 
 const PRESSO_MCP_URL = "https://mcp.presso.now/mcp";
@@ -8,77 +7,134 @@ export async function startProxy(token: string): Promise<void> {
   log("Starting stdio ↔ HTTP proxy...");
   log(`Remote endpoint: ${PRESSO_MCP_URL}`);
 
-  // Local side: stdio transport (talks to the MCP client)
-  const stdioTransport = new StdioServerTransport();
+  let sessionId: string | undefined;
+  let pending = 0;
+  let stdinClosed = false;
 
-  // Remote side: HTTP transport (talks to Presso's MCP server)
-  const httpTransport = new StreamableHTTPClientTransport(
-    new URL(PRESSO_MCP_URL),
-    {
-      requestInit: {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      },
-    },
-  );
-
-  let shuttingDown = false;
-
-  function shutdown(code: number): void {
-    if (shuttingDown) return;
-    shuttingDown = true;
-    stdioTransport.close().catch(() => {});
-    httpTransport.close().catch(() => {});
-    process.exit(code);
+  function maybeExit(): void {
+    if (stdinClosed && pending === 0) {
+      log("All requests complete, exiting.");
+      process.exit(0);
+    }
   }
 
-  // Bridge messages bidirectionally
-  stdioTransport.onmessage = (message) => {
-    httpTransport.send(message).catch((err) => {
-      error(`Failed to forward to remote: ${err}`);
-    });
-  };
+  async function forwardMessage(message: unknown): Promise<void> {
+    pending++;
+    try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        Accept: "application/json, text/event-stream",
+      };
 
-  httpTransport.onmessage = (message) => {
-    stdioTransport.send(message).catch((err) => {
-      error(`Failed to forward to client: ${err}`);
-    });
-  };
+      // API keys go in x-api-key, JWT tokens go in Authorization: Bearer
+      if (token.startsWith("ak_")) {
+        headers["x-api-key"] = token;
+      } else {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+      if (sessionId) {
+        headers["mcp-session-id"] = sessionId;
+      }
 
-  // Handle close events
-  stdioTransport.onclose = () => {
-    log("Client disconnected, shutting down.");
-    shutdown(0);
-  };
+      const res = await fetch(PRESSO_MCP_URL, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(message),
+      });
 
-  httpTransport.onclose = () => {
-    log("Remote server disconnected.");
-    shutdown(1);
-  };
+      // Capture session ID
+      const newSessionId = res.headers.get("mcp-session-id");
+      if (newSessionId) {
+        sessionId = newSessionId;
+        log(`Session: ${sessionId.substring(0, 16)}...`);
+      }
 
-  // Handle errors
-  stdioTransport.onerror = (err) => {
-    error(`Stdio transport error: ${err}`);
-  };
+      const contentType = res.headers.get("content-type") || "";
 
-  httpTransport.onerror = (err) => {
-    error(`HTTP transport error: ${err}`);
-  };
+      if (!res.ok) {
+        const body = await res.text();
+        error(`HTTP ${res.status}: ${body.substring(0, 200)}`);
+        if (message && typeof message === "object" && "id" in message) {
+          const errRes = {
+            jsonrpc: "2.0",
+            id: (message as { id: unknown }).id,
+            error: { code: -32000, message: `Server returned HTTP ${res.status}` },
+          };
+          process.stdout.write(JSON.stringify(errRes) + "\n");
+        }
+        return;
+      }
 
-  // Start both transports
-  await stdioTransport.start();
-  await httpTransport.start();
+      if (contentType.includes("text/event-stream")) {
+        const text = await res.text();
+        for (const line of text.split("\n")) {
+          const trimmed = line.trim();
+          if (trimmed.startsWith("data:")) {
+            const data = trimmed.slice(5).trim();
+            if (data) {
+              log(`← SSE: ${data.substring(0, 100)}...`);
+              process.stdout.write(data + "\n");
+            }
+          }
+        }
+      } else {
+        const data = await res.text();
+        if (data.trim()) {
+          log(`← ${data.substring(0, 100)}...`);
+          process.stdout.write(data + "\n");
+        }
+      }
+    } catch (err) {
+      error(`Fetch error: ${err}`);
+      if (message && typeof message === "object" && "id" in message) {
+        const errRes = {
+          jsonrpc: "2.0",
+          id: (message as { id: unknown }).id,
+          error: { code: -32000, message: `Proxy error: ${err}` },
+        };
+        process.stdout.write(JSON.stringify(errRes) + "\n");
+      }
+    } finally {
+      pending--;
+      maybeExit();
+    }
+  }
+
+  const rl = createInterface({ input: process.stdin, terminal: false });
+
+  rl.on("line", (line) => {
+    if (!line.trim()) return;
+
+    let message: unknown;
+    try {
+      message = JSON.parse(line);
+    } catch {
+      error(`Invalid JSON: ${line.substring(0, 100)}`);
+      return;
+    }
+
+    log(`→ ${JSON.stringify(message).substring(0, 100)}...`);
+    forwardMessage(message);
+  });
+
+  rl.on("close", () => {
+    log("stdin closed.");
+    stdinClosed = true;
+    maybeExit();
+  });
 
   log("Proxy is running. Forwarding MCP messages...");
 
   process.on("SIGINT", () => {
-    log("Received SIGINT, shutting down...");
-    shutdown(0);
+    log("Shutting down...");
+    process.exit(0);
   });
 
   process.on("SIGTERM", () => {
-    log("Received SIGTERM, shutting down...");
-    shutdown(0);
+    log("Shutting down...");
+    process.exit(0);
   });
+
+  // Keep process alive
+  await new Promise(() => {});
 }
